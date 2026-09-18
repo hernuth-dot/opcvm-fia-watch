@@ -1,0 +1,20 @@
+name: Test Hello World
+
+on:
+  workflow_dispatch: {}   # ajoute un bouton "Run workflow" dans l'onglet Actions
+  push:
+    branches: [main]      # se lance aussi a chaque push sur main (optionnel, tu peux retirer)
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dire bonjour
+        run: echo "Bonjour depuis GitHub Actions !"
+
+      - name: Verifier la version de Python disponible
+        run: python3 --version
+
+      - name: Lister les fichiers du depot
+        uses: actions/checkout@v4
+      - run: ls -la
