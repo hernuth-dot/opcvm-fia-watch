@@ -1,0 +1,51 @@
+name: Suivi OPCVM/FIA
+
+on:
+  schedule:
+    # Toutes les 4 heures. Ajuste selon le vrai rythme de publication de l'AMF.
+    - cron: "0 */4 * * *"
+  workflow_dispatch: {}   # permet de lancer manuellement depuis l'onglet Actions
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dependances
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Ecrire le .env depuis les secrets du repo
+        run: |
+          cat > .env <<EOF
+          GECO_URL=${{ vars.GECO_URL || 'https://geco.amf-france.org/liste-des-produits-d-epargne' }}
+          AMF_RSS_URL=${{ vars.AMF_RSS_URL }}
+          DATABASE_PATH=data/funds.db
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ vars.SMTP_PORT || '587' }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM=${{ vars.EMAIL_FROM }}
+          EMAIL_TO=${{ vars.EMAIL_TO }}
+          REPORT_OUTPUT_PATH=docs/index.html
+          EOF
+
+      - name: Lancer la verification
+        run: python scripts/run_check.py
+
+      - name: Commiter la base et le dashboard mis a jour
+        run: |
+          git config user.name "opcvm-fia-watch-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/funds.db docs/index.html
+          git diff --cached --quiet || git commit -m "chore: mise a jour automatique du suivi OPCVM/FIA"
+          git push
